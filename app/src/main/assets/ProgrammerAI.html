@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#111827">
+<title>Programmer AI</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#0b1020;color:#eef2ff;font-family:Arial,sans-serif}
+header{padding:16px;background:#111827;border-bottom:1px solid #26314a;position:sticky;top:0;z-index:2}
+h1{margin:0;font-size:21px}.sub{font-size:12px;color:#9ca3af;margin-top:4px}
+#chat{padding:14px 12px 110px;max-width:900px;margin:auto}
+.msg{max-width:88%;padding:12px 14px;margin:10px 0;border-radius:16px;white-space:pre-wrap;overflow-wrap:anywhere}
+.ai{background:#182235;margin-right:auto}.user{background:#2563eb;margin-left:auto}
+.code{background:#050814;border:1px solid #303b55;padding:12px;border-radius:10px;white-space:pre;overflow:auto;margin-top:8px;font-family:monospace}
+#composer{position:fixed;bottom:0;left:0;right:0;background:#111827;border-top:1px solid #26314a;padding:8px}
+.row{display:flex;gap:7px;max-width:900px;margin:auto}
+textarea{flex:1;resize:none;background:#0b1020;color:#fff;border:1px solid #374151;border-radius:12px;padding:11px;min-height:46px}
+button{border:0;border-radius:11px;padding:10px 13px;background:#2563eb;color:white;font-weight:bold}
+button.secondary{background:#273449}button.danger{background:#7f1d1d}
+.tools{display:flex;gap:6px;margin-bottom:7px;overflow:auto}.tools button{white-space:nowrap;font-size:12px}
+#file{display:none}.status{font-size:11px;color:#9ca3af;padding:4px}
+.modal{position:fixed;inset:0;background:#0009;display:none;align-items:center;justify-content:center;padding:18px;z-index:5}
+.card{background:#111827;border:1px solid #334155;border-radius:16px;padding:18px;width:min(520px,100%)}
+input{width:100%;padding:11px;border-radius:10px;border:1px solid #475569;background:#0b1020;color:white;margin:7px 0 12px}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🤖 Programmer AI</h1>
+  <div class="sub">Programação • código • arquivos • imagem • áudio • vídeo</div>
+</header>
+
+<main id="chat"></main>
+
+<div id="composer">
+  <div class="tools">
+    <button class="secondary" onclick="document.getElementById('file').click()">📎 Arquivo</button>
+    <button class="secondary" onclick="quick('Crie um programa para mim')">💻 Criar código</button>
+    <button class="secondary" onclick="quick('Encontre e corrija os erros neste código')">🐞 Corrigir</button>
+    <button class="secondary" onclick="quick('Explique este código de forma simples')">📖 Explicar</button>
+    <button class="secondary" onclick="openSettings()">⚙️ API</button>
+  </div>
+  <div class="status" id="status">Modo local. Configure uma API para respostas reais.</div>
+  <div class="row">
+    <textarea id="input" placeholder="Digite o que você quer programar..." rows="1"></textarea>
+    <button onclick="send()">Enviar</button>
+  </div>
+  <input id="file" type="file" accept="image/*,audio/*,video/*,.txt,.js,.ts,.py,.java,.kt,.html,.css,.json,.xml,.md,.zip">
+</div>
+
+<div class="modal" id="settings">
+ <div class="card">
+   <h2>⚙️ Configuração da IA</h2>
+   <p style="font-size:13px;color:#cbd5e1">
+     Para conectar um modelo real, informe a URL de um backend compatível com JSON.
+     Não coloque uma chave secreta diretamente neste HTML se ele for compartilhado.
+   </p>
+   <label>URL do backend</label>
+   <input id="endpoint" placeholder="https://seu-servidor.com/chat">
+   <label>Token (opcional)</label>
+   <input id="token" type="password" placeholder="Token">
+   <div class="row">
+     <button class="secondary" onclick="closeSettings()">Cancelar</button>
+     <button onclick="saveSettings()">Salvar</button>
+   </div>
+ </div>
+</div>
+
+<script>
+const chat=document.getElementById("chat");
+const input=document.getElementById("input");
+const fileInput=document.getElementById("file");
+const statusEl=document.getElementById("status");
+
+let history=JSON.parse(localStorage.getItem("programmer_ai_history")||"[]");
+let settings=JSON.parse(localStorage.getItem("programmer_ai_settings")||"{}");
+
+function escapeHTML(s){
+ return s.replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
+}
+function renderText(text){
+ let safe=escapeHTML(text);
+ safe=safe.replace(/```([\s\S]*?)```/g,(m,c)=>'<div class="code">'+c.trim()+'</div>');
+ return safe.replace(/\n/g,"<br>");
+}
+function add(role,text){
+ history.push({role,text});
+ localStorage.setItem("programmer_ai_history",JSON.stringify(history));
+ const d=document.createElement("div");
+ d.className="msg "+(role==="user"?"user":"ai");
+ d.innerHTML=renderText(text);
+ chat.appendChild(d);
+ window.scrollTo(0,document.body.scrollHeight);
+}
+function boot(){
+ if(history.length===0){
+   add("ai","Olá! 👋 Eu sou a Programmer AI.\n\nPosso ajudar você a criar, explicar e corrigir programas.\n\nNo modo local eu funciono como uma interface de programação. Para respostas de IA de verdade, configure um backend no botão ⚙️ API.");
+ }else{
+   history.forEach(x=>{
+     const d=document.createElement("div");
+     d.className="msg "+(x.role==="user"?"user":"ai");
+     d.innerHTML=renderText(x.text);
+     chat.appendChild(d);
+   });
+ }
+}
+function quick(t){input.value=t;input.focus()}
+function openSettings(){
+ document.getElementById("endpoint").value=settings.endpoint||"";
+ document.getElementById("token").value=settings.token||"";
+ document.getElementById("settings").style.display="flex";
+}
+function closeSettings(){document.getElementById("settings").style.display="none"}
+function saveSettings(){
+ settings.endpoint=document.getElementById("endpoint").value.trim();
+ settings.token=document.getElementById("token").value.trim();
+ localStorage.setItem("programmer_ai_settings",JSON.stringify(settings));
+ statusEl.textContent=settings.endpoint?"Backend configurado.":"Modo local. Configure uma API para respostas reais.";
+ closeSettings();
+}
+fileInput.addEventListener("change",()=>{
+ const f=fileInput.files[0];
+ if(!f)return;
+ statusEl.textContent="Arquivo selecionado: "+f.name;
+ add("user","📎 Arquivo selecionado: "+f.name+"\nTipo: "+f.type+"\nTamanho: "+Math.round(f.size/1024)+" KB");
+ if(f.type.startsWith("text/") || /\.(js|ts|py|java|kt|html|css|json|xml|md)$/i.test(f.name)){
+   const reader=new FileReader();
+   reader.onload=()=>input.value="Analise este arquivo e explique/corrija o código:\n\n"+String(reader.result).slice(0,30000);
+   reader.readAsText(f);
+ }else{
+   input.value="Analise o arquivo anexado: "+f.name;
+ }
+});
+
+async function send(){
+ const text=input.value.trim();
+ if(!text)return;
+ add("user",text);
+ input.value="";
+ if(settings.endpoint){
+   await callBackend(text);
+ }else{
+   localAnswer(text);
+ }
+}
+async function callBackend(text){
+ statusEl.textContent="Consultando a IA...";
+ try{
+   const headers={"Content-Type":"application/json"};
+   if(settings.token)headers.Authorization="Bearer "+settings.token;
+   const r=await fetch(settings.endpoint,{
+     method:"POST",
+     headers,
+     body:JSON.stringify({message:text,history})
+   });
+   if(!r.ok)throw new Error("HTTP "+r.status);
+   const data=await r.json();
+   const answer=data.reply||data.message||data.response||JSON.stringify(data);
+   add("ai",answer);
+   statusEl.textContent="IA conectada.";
+ }catch(e){
+   add("ai","Não consegui conectar ao backend.\n\nErro: "+e.message+"\n\nVerifique a URL, a internet e a configuração do servidor.");
+   statusEl.textContent="Falha na conexão.";
+ }
+}
+function localAnswer(text){
+ const t=text.toLowerCase();
+ let answer;
+ if(t.includes("corrija")||t.includes("erro")||t.includes("bug")){
+   answer="Modo local: envie o código completo e eu posso ajudar a identificar o problema. Para análise automática por IA, configure um backend no botão ⚙️ API.";
+ }else if(t.includes("crie")||t.includes("programa")||t.includes("código")){
+   answer="Modo local: diga qual linguagem você quer (Python, JavaScript, Kotlin, Java, HTML/CSS etc.) e descreva o programa. A conexão com o modelo de IA pode ser ativada pelo backend.";
+ }else if(t.includes("explique")){
+   answer="Modo local: cole o código aqui e diga qual parte você não entendeu. A interface já está preparada para enviar a pergunta a uma IA real.";
+ }else{
+   answer="Recebi sua mensagem. A interface está funcionando no celular, mas a IA ainda está em modo local.\n\nPara respostas inteligentes reais, configure um backend no botão ⚙️ API.";
+ }
+ add("ai",answer);
+}
+input.addEventListener("keydown",e=>{
+ if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send()}
+});
+boot();
+</script>
+</body>
+</html>
